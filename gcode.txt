@@ -1,11 +1,3 @@
-function parse(gcode) {
-    
-}
-
-
-
-
-/*
 https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=823374
 
 Letter Meaning
@@ -112,4 +104,3 @@ M48 enable speed and feed overrides
 M49 disable speed and feed overrides
 M60 pallet shuttle and program stop
 Table 7. M Codes
-*/

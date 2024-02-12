@@ -1,3 +1,5 @@
+import Interpreter from 'gcode-interpreter'
+
 class Plotter {
     /** @type{HTMLCanvasElement} */
     canvas;
@@ -138,7 +140,8 @@ class Plotter {
         if (this.commandQueue.length == 0) {
             return;
         }
-        var cmds = this.commandQueue.shift().process(this, t);
+        var cmd = this.commandQueue.shift()
+        var cmds = cmd.process(this, t);
         this.commandQueue = cmds.concat(this.commandQueue);
     }
 
@@ -199,16 +202,24 @@ class MoveCommand {
 class CMoveCommand {
     // Maximum distance to move in one arc.
     maxMove = 5
+    maxSpeed = 0.1 // pixels per ms
 
     constructor(x, y, duration) {
         this.x = x
         this.y = y
-        this.duration = duration
+        this.duration = duration || 0
     }
 
     process(plotter, t) {
         var dx = this.x - plotter.x;
         var dy = this.y - plotter.y;
+
+        var minDuration = Math.sqrt(dx**2 + dy**2) / this.maxSpeed
+
+        if (this.duration < minDuration) {
+            this.duration = minDuration
+        }
+
         var delta = Math.sqrt(dx*dx+dy*dy);
         var steps = Math.ceil(delta / this.maxMove);
         var cmds = []
@@ -233,30 +244,87 @@ class PenCommand {
     }
 }
 
+function makeInterpreter(plotter) {
+    // This assumes G90!
+
+    const handlers = {
+        'G0': (params) => {
+            plotter.enqueueCommand(new PenCommand(false))
+            plotter.enqueueCommand(new CMoveCommand(
+                params.X || plotter.x,
+                params.Y || plotter.y,
+            ))
+        },
+        'G1': (params) => {
+            plotter.enqueueCommand(new PenCommand(true))
+            plotter.enqueueCommand(new CMoveCommand(
+                params.X || plotter.x,
+                params.Y || plotter.y,
+            ))
+        },
+    }
+    var gi = new Interpreter({
+        handlers: handlers,
+        defaultHandler: (cmd, params) => {
+            console.log("Unhandled command", cmd, params)
+        }
+    })
+    return gi;
+}
+
+var GCODE = `
+G0 X97.288441 Y271.867151
+G1 X70.804368 Y192.14469 F300
+G1 X139.44676 Y241.329396 F300
+G1 X54.859873 Y241.329396 F300
+G1 X124.04275999999999 Y192.14469 F300
+G1 X97.288441 Y271.867151 F300
+`
+
 // Main entry point.
 window.addEventListener('load', function() {
     var p = new Plotter('canvas', 400);
    
-    var points = [
-        [200,200],
-        [200,300],
-        [300,300],
-        [100,225],
-        [100,350],
-    ]
-    points.forEach((pt) => {
-        p.enqueueCommand(new CMoveCommand(pt[0], pt[1], 2000))
-    })
+    if (false) {
+        var points = [
+            [200,200],
+            [200,300],
+            [300,300],
+            [100,225],
+            [100,350],
+        ]
+        points.forEach((pt) => {
+            p.enqueueCommand(new CMoveCommand(pt[0], pt[1]))
+        })
 
-    p.enqueueCommand(new PenCommand(false))
-    p.enqueueCommand(new CMoveCommand(200, 450, 2000))
-    p.enqueueCommand(new PenCommand(true))
-    p.enqueueCommand(new CMoveCommand(450, 450, 2000))
-
+        p.enqueueCommand(new PenCommand(false))
+        p.enqueueCommand(new CMoveCommand(200, 450, 2000))
+        p.enqueueCommand(new PenCommand(true))
+        p.enqueueCommand(new CMoveCommand(450, 450, 2000))
+    }
     // TODO: Build GCode interpreter.
+    var interp = makeInterpreter(p)
+    console.log(GCODE)
+    
 
     p.run();
 
+
+    document.getElementById('submit-gcode').addEventListener('click', (ev) => {
+        var gcode = document.getElementById('gcode').value
+
+        interp.loadFromString(gcode, (err, results) => {
+            if (err) {
+                console.error(err);
+                return;
+            }
+        })
+        .on('data', (data) => {
+        })
+        .on('end', (results) => {
+        })
+    })
+
     // for debugging / interactivity
-    this.window.plotter = p
+    window.plotter = p
 })
