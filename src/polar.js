@@ -22,7 +22,8 @@ class Plotter {
 
     running = false;
 
-    ppi = 2;
+    ppi = 1;
+    feedRateScale = 1.0;
 
     constructor(canvasId, machineWidth) {
         this.canvas = document.getElementById(canvasId)
@@ -220,7 +221,7 @@ var maxMove = 5;
 
 // Move from current position to provided cartesian position over some duration.
 // This simply replaces itself by a series of polar moves small enough to have negligible arcs.
-class CMoveCommand {
+class CMoveCommandPieceWise {
     defaultSpeed = 0.2 // pixels per ms
 
     constructor(x, y, speed) {
@@ -248,27 +249,30 @@ class CMoveCommand {
     }
 }
 
-/*
-        u^2 = x^2 + y^2
-        v^2 = (W - x)^2 + y^2 = x^2 + y^2 + W^2 - 2Wx
 
-        2 u du = 2x dx + 2 y dy
-        du = (x/u)dx + (y/u)dy
-        
-        2 v dv = 2(x-W) dx + 2y dy
-        dv = ((x-W)/v)dx + (y/v)dy 
-*/
-class CMoveCommand2 {
+class CMoveCommand {
     defaultSpeed = 0.2
 
-    constructor(x, y, speed) {
+    constructor(x, y, speed, absolute) {
         this.x = x
         this.y = y
         this.speed = speed || this.defaultSpeed
+        this.absolute = absolute
         this.started = false
     }
 
     process(plotter, t) {
+        if (!this.started) {
+            // Convert to absolute coords and handle scaling.
+            if (this.absolute) {
+                this.x = (this.x * plotter.ppi) || plotter.x
+                this.y = (this.y * plotter.ppi) || plotter.y
+            } else {
+                this.x = plotter.x + ((this.x * plotter.ppi) || 0)
+                this.y = plotter.y + ((this.y * plotter.ppi) || 0)
+            }
+        }
+
         var dx = this.x - plotter.x
         var dy = this.y - plotter.y
         var dist = Math.sqrt(dx*dx + dy*dy)
@@ -283,6 +287,18 @@ class CMoveCommand2 {
             return []
         }
 
+        /*
+            Coord transform (Jacobian matrix):
+
+            u^2 = x^2 + y^2
+            v^2 = (W - x)^2 + y^2 = x^2 + y^2 + W^2 - 2Wx
+
+            2 u du = 2x dx + 2 y dy
+            du = (x/u)dx + (y/u)dy
+            
+            2 v dv = 2(x-W) dx + 2y dy
+            dv = ((x-W)/v)dx + (y/v)dy
+        */
         var du = dx * plotter.x / plotter.u + dy * plotter.y / plotter.u
         var dv = dx * (plotter.x - plotter.machineWidth)/plotter.v + dy * plotter.y / plotter.v
         
@@ -304,25 +320,23 @@ class PenCommand {
 }
 
 function makeInterpreter(plotter) {
-    // This assumes G90!
+    var absolute = true
 
     const handlers = {
         'G0': (params) => {
             plotter.enqueueCommand(new PenCommand(false))
-            plotter.enqueueCommand(new CMoveCommand2(
-                params.X * plotter.ppi || plotter.x,
-                params.Y * plotter.ppi || plotter.y,
-                params.F / 60.0,
-            ))
+            plotter.enqueueCommand(new CMoveCommand(params.X, params.Y, 0, absolute))
         },
         'G1': (params) => {
             plotter.enqueueCommand(new PenCommand(true))
-            plotter.enqueueCommand(new CMoveCommand2(
-                params.X * plotter.ppi || plotter.x,
-                params.Y * plotter.ppi || plotter.y,
-                params.F * plotter.ppi / 60000.0,
-            ))
+            plotter.enqueueCommand(new CMoveCommand(params.X, params.Y, params.F/60000.0*plotter.feedRateScale, absolute))
         },
+        'G90': (params) => {
+            absolute = true;
+        },
+        'G91': (params) => {
+            absolute = false;
+        }
     }
     var gi = new Interpreter({
         handlers: handlers,
@@ -333,50 +347,20 @@ function makeInterpreter(plotter) {
     return gi;
 }
 
-var GCODE = `
-G0 X97.288441 Y271.867151
-G1 X70.804368 Y192.14469 F300
-G1 X139.44676 Y241.329396 F300
-G1 X54.859873 Y241.329396 F300
-G1 X124.04275999999999 Y192.14469 F300
-G1 X97.288441 Y271.867151 F300
-`
-
 // Main entry point.
 window.addEventListener('load', function() {
     var p = new Plotter('canvas', 400);
-   
-    if (false) {
-        var points = [
-            [200,200],
-            [200,300],
-            [300,300],
-            [100,225],
-            [100,350],
-        ]
-        points.forEach((pt) => {
-            p.enqueueCommand(new CMoveCommand(pt[0], pt[1]))
-        })
-
-        p.enqueueCommand(new PenCommand(false))
-        p.enqueueCommand(new CMoveCommand(200, 450, 2000))
-        p.enqueueCommand(new PenCommand(true))
-        p.enqueueCommand(new CMoveCommand(450, 450, 2000))
-    }
-    // TODO: Build GCode interpreter.
     var interp = makeInterpreter(p)
-    console.log(GCODE)
-    
-
     p.run();
-
 
     document.getElementById('submit-gcode').addEventListener('click', (ev) => {
         var gcode = document.getElementById('gcode').value
-        var maxArcStep = parseFloat(document.getElementById('max-arc-step').value)
-        if (!isNaN(maxArcStep)) {
-          maxMove = maxArcStep;
-        }
+        //var maxArcStep = parseFloat(document.getElementById('max-arc-step').value) || 5
+        var feedRateScale = parseFloat(document.getElementById('feed-rate-scale').value) || 20
+        var ppi = parseFloat(document.getElementById('pixels-per-inch').value) || 1
+        
+        plotter.ppi = ppi
+        plotter.feedRateScale = feedRateScale
         interp.loadFromString(gcode, (err, results) => {
             if (err) {
                 console.error(err);
