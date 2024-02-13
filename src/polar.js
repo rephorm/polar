@@ -22,6 +22,8 @@ class Plotter {
 
     running = false;
 
+    ppi = 2;
+
     constructor(canvasId, machineWidth) {
         this.canvas = document.getElementById(canvasId)
         this.ctx = this.canvas.getContext('2d')
@@ -84,11 +86,12 @@ class Plotter {
         while (dt > 0) {
             var step = Math.min(dt, this.physdt);
             this.processPhysics(step);
+            this.processCommand(t);
             dt -= step;
         }
         this.plotCtx.stroke();
 
-        this.processCommand(t);
+        
 
         this.draw();
         this.lastT = t;
@@ -218,24 +221,20 @@ var maxMove = 5;
 // Move from current position to provided cartesian position over some duration.
 // This simply replaces itself by a series of polar moves small enough to have negligible arcs.
 class CMoveCommand {
-    maxSpeed = 0.2 // pixels per ms
+    defaultSpeed = 0.2 // pixels per ms
 
-    constructor(x, y, duration) {
+    constructor(x, y, speed) {
         this.x = x
         this.y = y
-        this.duration = duration || 0
+        this.speed = speed || this.defaultSpeed
     }
 
     process(plotter, t) {
         var dx = this.x - plotter.x;
         var dy = this.y - plotter.y;
 
-        var minDuration = Math.sqrt(dx**2 + dy**2) / this.maxSpeed
-
-        if (this.duration < minDuration) {
-            this.duration = minDuration
-        }
-
+        var dist = Math.sqrt(dx*dx+dy*dy)
+        var duration = dist / this.speed
         var delta = Math.sqrt(dx*dx+dy*dy);
         var steps = Math.ceil(delta / maxMove);
         var cmds = []
@@ -243,9 +242,53 @@ class CMoveCommand {
             var x = plotter.x + i * dx / steps
             var y = plotter.y + i * dy / steps
             var uv = plotter.xy2uv(x, y);
-            cmds.push(new MoveCommand(uv.u, uv.v, this.duration / steps));
+            cmds.push(new MoveCommand(uv.u, uv.v, duration / steps));
         }
         return cmds;
+    }
+}
+
+/*
+        u^2 = x^2 + y^2
+        v^2 = (W - x)^2 + y^2 = x^2 + y^2 + W^2 - 2Wx
+
+        2 u du = 2x dx + 2 y dy
+        du = (x/u)dx + (y/u)dy
+        
+        2 v dv = 2(x-W) dx + 2y dy
+        dv = ((x-W)/v)dx + (y/v)dy 
+*/
+class CMoveCommand2 {
+    defaultSpeed = 0.2
+
+    constructor(x, y, speed) {
+        this.x = x
+        this.y = y
+        this.speed = speed || this.defaultSpeed
+        this.started = false
+    }
+
+    process(plotter, t) {
+        var dx = this.x - plotter.x
+        var dy = this.y - plotter.y
+        var dist = Math.sqrt(dx*dx + dy*dy)
+
+        if (!this.started) {
+            this.started = true
+            this.deadline = t + (dist / this.speed)
+        }
+        if (t >= this.deadline) {
+            plotter.uvel = 0
+            plotter.vvel = 0
+            return []
+        }
+
+        var du = dx * plotter.x / plotter.u + dy * plotter.y / plotter.u
+        var dv = dx * (plotter.x - plotter.machineWidth)/plotter.v + dy * plotter.y / plotter.v
+        
+        plotter.uvel = this.speed * du / dist
+        plotter.vvel = this.speed * dv / dist
+        return [this]
     }
 }
 
@@ -266,16 +309,18 @@ function makeInterpreter(plotter) {
     const handlers = {
         'G0': (params) => {
             plotter.enqueueCommand(new PenCommand(false))
-            plotter.enqueueCommand(new CMoveCommand(
-                params.X || plotter.x,
-                params.Y || plotter.y,
+            plotter.enqueueCommand(new CMoveCommand2(
+                params.X * plotter.ppi || plotter.x,
+                params.Y * plotter.ppi || plotter.y,
+                params.F / 60.0,
             ))
         },
         'G1': (params) => {
             plotter.enqueueCommand(new PenCommand(true))
-            plotter.enqueueCommand(new CMoveCommand(
-                params.X || plotter.x,
-                params.Y || plotter.y,
+            plotter.enqueueCommand(new CMoveCommand2(
+                params.X * plotter.ppi || plotter.x,
+                params.Y * plotter.ppi || plotter.y,
+                params.F * plotter.ppi / 60000.0,
             ))
         },
     }
