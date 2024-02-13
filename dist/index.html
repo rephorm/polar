@@ -2,7 +2,6 @@
 <html>
     <head>
         <title>PlotterSim</title>
-        <!--script type="module" src="./src/polar.js"></script-->
     </head>
     <style>
         #canvas { float: left; }
@@ -10,20 +9,12 @@
     <body>
         <script src="main.js"></script>
         <canvas id="canvas" width="600" height="600"></canvas>
-        G Code:<br />
+        G Code: (Examples: <span id="examples-holder"></span>)<br />
         <textarea id="gcode" rows="20" cols="50">
-; only G0 and G1 supported so far
-; (oops forgot that +y is down...)
-G0 X97.288441 Y271.867151
-G1 X70.804368 Y192.14469 F300
-G1 X139.44676 Y241.329396 F300
-G1 X54.859873 Y241.329396 F300
-G1 X124.04275999999999 Y192.14469 F300
-G1 X97.288441 Y271.867151 F300
         </textarea><br />
         Feed Rate Scale: <input id="feed-rate-scale" value="20"><br />
         Pixels / Unit: <input id="pixels-per-inch" value="1"><br />
         <button id="submit-gcode">Submit</button>
-        <button id="reset">Reset</button>
+        <button id="reset">Reset</button><br />
     </body>
 </html>

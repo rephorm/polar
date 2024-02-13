@@ -5,3 +5,4 @@ import buffer from 'buffer'
 window.Buffer = buffer.Buffer
 
 import './polar.js'
+import './examples.js'
