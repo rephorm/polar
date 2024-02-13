@@ -71,7 +71,14 @@ class Plotter {
 
     process(t) {
         var dt = t - this.lastT;
-        
+
+        if (dt > 5*this.physdt) {
+            // Assume the page was off-screen.
+            // Skip and start again on next frame.
+            // Alternatively, move 
+            this.lastT = t;
+            return;
+        }
         this.plotCtx.beginPath();
         this.plotCtx.moveTo(this.x, this.y);
         while (dt > 0) {
@@ -163,6 +170,14 @@ class Plotter {
     enqueueCommand(cmd) {
         this.commandQueue.push(cmd)
     }
+
+    reset() {
+        this.commandQueue = []
+        this.u = this.v = this.machineWidth / 2.0 + 10;
+        this.uvel = this.vvel = 0;
+        this.penDown = false;
+        this.plotCtx.clearRect(0, 0, this.plot.width, this.plot.height)
+    }
 }
 
 // Move from current position to provided polar coordinates over some duration.
@@ -197,12 +212,13 @@ class MoveCommand {
     }
 }
 
+// Maximum distance to move in one arc
+var maxMove = 5;
+
 // Move from current position to provided cartesian position over some duration.
 // This simply replaces itself by a series of polar moves small enough to have negligible arcs.
 class CMoveCommand {
-    // Maximum distance to move in one arc.
-    maxMove = 5
-    maxSpeed = 0.1 // pixels per ms
+    maxSpeed = 0.2 // pixels per ms
 
     constructor(x, y, duration) {
         this.x = x
@@ -221,7 +237,7 @@ class CMoveCommand {
         }
 
         var delta = Math.sqrt(dx*dx+dy*dy);
-        var steps = Math.ceil(delta / this.maxMove);
+        var steps = Math.ceil(delta / maxMove);
         var cmds = []
         for (var i = 1; i <= steps; i++) {
             var x = plotter.x + i * dx / steps
@@ -312,7 +328,10 @@ window.addEventListener('load', function() {
 
     document.getElementById('submit-gcode').addEventListener('click', (ev) => {
         var gcode = document.getElementById('gcode').value
-
+        var maxArcStep = parseFloat(document.getElementById('max-arc-step').value)
+        if (!isNaN(maxArcStep)) {
+          maxMove = maxArcStep;
+        }
         interp.loadFromString(gcode, (err, results) => {
             if (err) {
                 console.error(err);
@@ -323,7 +342,11 @@ window.addEventListener('load', function() {
         })
         .on('end', (results) => {
         })
-    })
+    });
+
+    document.getElementById('reset').addEventListener('click', (ev) => {
+        p.reset()
+    });
 
     // for debugging / interactivity
     window.plotter = p
