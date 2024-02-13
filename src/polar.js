@@ -213,8 +213,9 @@ class MoveCommand {
 // Maximum distance to move in one arc
 var maxMove = 5;
 
-// Move from current position to provided cartesian position over some duration.
+// Move from current position to provided cartesian position at some speed.
 // This simply replaces itself by a series of polar moves small enough to have negligible arcs.
+// See CMoveCommand instead.
 class CMoveCommandPieceWise {
     defaultSpeed = 0.2 // pixels per ms
 
@@ -243,6 +244,8 @@ class CMoveCommandPieceWise {
     }
 }
 
+// A cartesian move command.
+// Calculates cartesian velocity and transforms to 'polar' coords.
 class CMoveCommand {
     defaultSpeed = 0.2
 
