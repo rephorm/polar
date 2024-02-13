@@ -68,8 +68,8 @@ class Plotter {
         ctx.fillStyle = 'green';
         ctx.fillRect(this.x-2, this.y-2, 4, 4);
 
-        ctx.fillText("(u, v) = (" + Math.round(this.u) + ", " + Math.round(this.v) + ")", 100, 20)
-        ctx.fillText("(x, y) = (" + Math.round(this.x) + ", " + Math.round(this.y) + ")", 100, 40)
+        ctx.fillText("(u, v) = (" + Math.round(this.u) + ", " + Math.round(this.v) + ")", 170, 20)
+        ctx.fillText("(x, y) = (" + Math.round(this.x) + ", " + Math.round(this.y) + ")", 170, 40)
     }
 
     process(t) {
