@@ -8,4 +8,6 @@ Uses [gcode-interpreter](https://github.com/cncjs/gcode-interpreter) to parse gc
 
 Demo: https://rephorm.github.io/polar/
 
+Inspired by https://www.fr0gg3r.com/
+
 ![screenshot](data/circles_v0.2.png)
