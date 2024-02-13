@@ -17,6 +17,7 @@ class Plotter {
     v = 75;
 
     penDown = true;
+    penColor = '#000000';
 
     commandQueue = [];
 
@@ -24,6 +25,9 @@ class Plotter {
 
     ppi = 1;
     feedRateScale = 1.0;
+
+    // max ms between updates
+    maxProcessDelta = 75;
 
     constructor(canvasId, machineWidth) {
         this.canvas = document.getElementById(canvasId)
@@ -38,18 +42,8 @@ class Plotter {
         this.u = this.machineWidth / 2.0 + 10;
         this.v = this.u;
 
-        this.physdt = 1000.0 / 60.0;
+        this.physdt = 1000.0 / 240.0;
         this.lastT = performance.now()
-    }
-
-    plotLine(x1,y1,x2,y2) {
-        var ctx = this.plotCtx;
-       
-        ctx.beginPath()
-        ctx.moveTo(x1,y1);
-        ctx.lineTo(x2,y2);
-        ctx.strokeStyle = 'red'; // huh?
-        ctx.stroke();
     }
 
     draw() {
@@ -75,13 +69,13 @@ class Plotter {
     process(t) {
         var dt = t - this.lastT;
 
-        if (dt > 5*this.physdt) {
+        if (dt > this.maxProcessDelta) {
             // Assume the page was off-screen.
             // Skip and start again on next frame.
-            // Alternatively, move 
             this.lastT = t;
             return;
         }
+        this.plotCtx.strokeStyle = this.penColor
         this.plotCtx.beginPath();
         this.plotCtx.moveTo(this.x, this.y);
         while (dt > 0) {
@@ -249,7 +243,6 @@ class CMoveCommandPieceWise {
     }
 }
 
-
 class CMoveCommand {
     defaultSpeed = 0.2
 
@@ -284,6 +277,9 @@ class CMoveCommand {
         if (t >= this.deadline) {
             plotter.uvel = 0
             plotter.vvel = 0
+            // var errx =  plotter.x - this.x
+            // var erry = plotter.y - this.y 
+            // var err = Math.sqrt(errx*errx + erry*erry)
             return []
         }
 
@@ -358,9 +354,11 @@ window.addEventListener('load', function() {
         //var maxArcStep = parseFloat(document.getElementById('max-arc-step').value) || 5
         var feedRateScale = parseFloat(document.getElementById('feed-rate-scale').value) || 20
         var ppi = parseFloat(document.getElementById('pixels-per-inch').value) || 1
-        
+        var penColor = document.getElementById('pen-color').value || '#000000';
+
         plotter.ppi = ppi
         plotter.feedRateScale = feedRateScale
+        plotter.penColor = penColor
         interp.loadFromString(gcode, (err, results) => {
             if (err) {
                 console.error(err);
