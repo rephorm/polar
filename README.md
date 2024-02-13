@@ -7,3 +7,5 @@ Supports G0, G1, G90 and G91.
 Uses [gcode-interpreter](https://github.com/cncjs/gcode-interpreter) to parse gcode commands.
 
 Demo: https://rephorm.github.io/polar/
+
+![screenshot](data/circles_v0.2.png)
