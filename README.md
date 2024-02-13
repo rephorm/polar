@@ -1,7 +1,7 @@
 # Wall Plotter Simulation v0.01
 
-Simulates a wall plotter by controlling only the speed at which the two cables change.
+Simulates a wall plotter by controlling only the speed at which the two cables change length.
 
-Very basic gcode support (G0 and G1 -- ignores feed rate).
+Supports G0, G1, G90 and G91.
 
-Uses gcode-interpreter to parse gcode commands.
+Uses [gcode-interpreter](https://github.com/cncjs/gcode-interpreter) to parse gcode commands.
