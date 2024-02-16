@@ -16,6 +16,9 @@ class Plotter {
     u = 75;
     v = 75;
 
+    xoffset = 0;
+    yoffset = 0;
+
     penDown = true;
     penColor = '#000000';
 
@@ -38,18 +41,18 @@ class Plotter {
         this.plot.height = this.canvas.height;
         this.plotCtx = this.plot.getContext('2d');
 
+        
         this.machineWidth = machineWidth;
-        this.u = this.machineWidth / 2.0 + 10;
-        this.v = this.u;
-
         this.physdt = 1000.0 / 240.0;
         this.lastT = performance.now()
+
+        this.reset()
     }
 
     draw() {
         var ctx = this.ctx;
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
-
+        
         ctx.drawImage(this.plot, 0, 0);
 
         ctx.strokeStyle = 'green';
@@ -174,7 +177,15 @@ class Plotter {
         this.u = this.v = this.machineWidth / 2.0 + 10;
         this.uvel = this.vvel = 0;
         this.penDown = false;
-        this.plotCtx.clearRect(0, 0, this.plot.width, this.plot.height)
+        this.plotCtx.fillStyle = '#fff'
+        this.plotCtx.fillRect(0, 0, this.plot.width, this.plot.height)
+    }
+
+    download() {
+        var a = document.createElement('a')
+        a.href = this.plot.toDataURL()
+        a.download = 'plot.png'
+        a.click()
     }
 }
 
@@ -261,8 +272,12 @@ class CMoveCommand {
         if (!this.started) {
             // Convert to absolute coords and handle scaling.
             if (this.absolute) {
-                this.x = (this.x * plotter.ppi) || plotter.x
-                this.y = (this.y * plotter.ppi) || plotter.y
+                console.log(plotter.xoffset, this.x, plotter.ppi)
+                this.x = (this.x * plotter.ppi + plotter.xoffset) || plotter.x
+                this.y = (this.y * plotter.ppi + plotter.yoffset) || plotter.y
+                console.log(this.x, plotter.xoffset, this.x + plotter.xoffset,
+                     (this.x * plotter.ppi + plotter.xoffset),
+                      (this.x * plotter.ppi + plotter.xoffset) || plotter.x)
             } else {
                 this.x = plotter.x + ((this.x * plotter.ppi) || 0)
                 this.y = plotter.y + ((this.y * plotter.ppi) || 0)
@@ -354,14 +369,13 @@ window.addEventListener('load', function() {
 
     document.getElementById('submit-gcode').addEventListener('click', (ev) => {
         var gcode = document.getElementById('gcode').value
-        //var maxArcStep = parseFloat(document.getElementById('max-arc-step').value) || 5
-        var feedRateScale = parseFloat(document.getElementById('feed-rate-scale').value) || 20
-        var ppi = parseFloat(document.getElementById('pixels-per-inch').value) || 1
-        var penColor = document.getElementById('pen-color').value || '#000000';
 
-        plotter.ppi = ppi
-        plotter.feedRateScale = feedRateScale
-        plotter.penColor = penColor
+        plotter.feedRateScale = parseFloat(document.getElementById('feed-rate-scale').value) || 20
+        plotter.ppi = parseFloat(document.getElementById('pixels-per-inch').value) || 1
+        plotter.penColor = document.getElementById('pen-color').value || '#000000';
+        plotter.xoffset = parseFloat(document.getElementById('x-offset').value) || 0
+        plotter.yoffset = parseFloat(document.getElementById('y-offset').value) || 0
+        
         interp.loadFromString(gcode, (err, results) => {
             if (err) {
                 console.error(err);
@@ -377,6 +391,10 @@ window.addEventListener('load', function() {
     document.getElementById('reset').addEventListener('click', (ev) => {
         p.reset()
     });
+
+    this.document.getElementById('download-link').addEventListener('click', (ev) => {
+        p.download();
+    })
 
     // for debugging / interactivity
     window.plotter = p

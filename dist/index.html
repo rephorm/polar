@@ -4,18 +4,24 @@
         <title>PlotterSim</title>
     </head>
     <style>
-        #canvas { float: left; }
+        #canvasDiv { float: left; }
     </style>
     <body>
         <script src="main.js"></script>
-        <canvas id="canvas" width="600" height="600"></canvas>
-        G Code: (Examples: <span id="examples-holder"></span>)<br />
-        <textarea id="gcode" rows="20" cols="50">
-        </textarea><br />
-        Feed Rate Scale: <input id="feed-rate-scale" value="20"><br />
-        Pixels / Unit: <input id="pixels-per-inch" value="1"><br />
-        Pen Color: <input id="pen-color" value="#000000"><br />
-        <button id="submit-gcode">Submit</button>
-        <button id="reset">Reset</button><br />
+        <div id="canvasDiv">
+            <canvas id="canvas" width="600" height="600"></canvas><br />
+            <a href="#" id="download-link">Download</a>
+        </div>
+        <div id="sideBar">
+            G Code: (Examples: <span id="examples-holder"></span>)<br />
+            <textarea id="gcode" rows="20" cols="50">
+            </textarea><br />
+            Feed Rate Scale: <input id="feed-rate-scale" value="20"><br />
+            Pixels / Unit: <input id="pixels-per-inch" value="1"><br />
+            Pen Color: <input id="pen-color" value="#000000"><br />
+            Offset X: <input id="x-offset" value="0" size="3"> Y: <input id="y-offset" value="0" size="3"><br />
+            <button id="submit-gcode">Submit</button>
+            <button id="reset">Reset</button><br />
+        </div>
     </body>
 </html>
